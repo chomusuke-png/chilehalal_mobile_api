@@ -6,6 +6,7 @@ class ChileHalal_Admin_Menu {
 
     public function __construct() {
         add_action( 'admin_menu', [ $this, 'register_main_menu' ] );
+        add_action( 'admin_menu', [ $this, 'fix_submenu_order' ], 999 );
     }
 
     public function register_main_menu() {
@@ -26,6 +27,31 @@ class ChileHalal_Admin_Menu {
             'chilehalal-app',
             [ $this, 'render_dashboard' ]
         );
+    }
+
+    public function fix_submenu_order() {
+        global $submenu;
+
+        if ( ! isset( $submenu['chilehalal-app'] ) ) {
+            return;
+        }
+
+        $my_submenu = $submenu['chilehalal-app'];
+
+        $dashboard_key = null;
+        foreach ( $my_submenu as $key => $item ) {
+            if ( $item[2] === 'chilehalal-app' ) {
+                $dashboard_key = $key;
+                break;
+            }
+        }
+        if ( $dashboard_key !== null ) {
+            $dashboard_item = $my_submenu[$dashboard_key];
+            unset( $my_submenu[$dashboard_key] );
+            array_unshift( $my_submenu, $dashboard_item );
+        }
+
+        $submenu['chilehalal-app'] = $my_submenu;
     }
 
     public function render_dashboard() {
