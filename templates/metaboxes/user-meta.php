@@ -1,5 +1,6 @@
 <?php
 // templates/metaboxes/user-meta.php
+// Variables disponibles: $email, $phone, $status, $role
 ?>
 <?php wp_nonce_field( 'save_ch_user', 'ch_user_nonce' ); ?>
 
@@ -15,7 +16,7 @@
         </p>
     </div>
 
-    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+    <div>
         <p>
             <label><strong>Estado de la Cuenta</strong></label><br>
             <select name="ch_user_status" style="width:100%; padding: 8px;">
@@ -24,9 +25,15 @@
                 <option value="pending" <?php selected($status, 'pending'); ?>>🟡 Pendiente</option>
             </select>
         </p>
+        
         <p>
-            <label><strong>Nivel de Usuario</strong></label><br>
-            <input type="number" name="ch_user_points" value="<?php echo esc_attr($points); ?>" style="width:100%; padding: 8px;">
+            <label><strong>Rol en la App</strong></label><br>
+            <select name="ch_user_role" style="width:100%; padding: 8px; border: 1px solid #999;">
+                <option value="user" <?php selected($role, 'user'); ?>>Usuario (Normal)</option>
+                <option value="editor" <?php selected($role, 'editor'); ?>>Editor (Puede modificar)</option>
+                <option value="owner" <?php selected($role, 'owner'); ?>>Owner (Super Admin)</option>
+            </select>
+            <br>
         </p>
     </div>
 </div>

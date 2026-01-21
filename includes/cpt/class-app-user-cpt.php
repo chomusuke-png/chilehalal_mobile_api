@@ -27,7 +27,9 @@ class ChileHalal_App_User_CPT {
         $email = get_post_meta( $post->ID, '_ch_user_email', true );
         $phone = get_post_meta( $post->ID, '_ch_user_phone', true );
         $status = get_post_meta( $post->ID, '_ch_user_status', true );
-        $points = get_post_meta( $post->ID, '_ch_user_points', true );
+        
+        $role = get_post_meta( $post->ID, '_ch_user_role', true );
+        if ( empty( $role ) ) $role = 'user'; 
 
         require CH_API_PATH . 'templates/metaboxes/user-meta.php';
     }
@@ -35,7 +37,8 @@ class ChileHalal_App_User_CPT {
     public function save_meta( $post_id ) {
         if ( ! isset( $_POST['ch_user_nonce'] ) || ! wp_verify_nonce( $_POST['ch_user_nonce'], 'save_ch_user' ) ) return;
         
-        $fields = ['ch_user_email', 'ch_user_phone', 'ch_user_status', 'ch_user_points'];
+        $fields = ['ch_user_email', 'ch_user_phone', 'ch_user_status', 'ch_user_role'];
+        
         foreach ( $fields as $field ) {
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $post_id, '_' . $field, sanitize_text_field( $_POST[ $field ] ) );

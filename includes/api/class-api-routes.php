@@ -115,10 +115,8 @@ class ChileHalal_API_Routes {
         if ( ! is_email($email) ) return new WP_Error( 'invalid_email', 'Correo inválido', ['status' => 400] );
 
         $existing = new WP_Query([
-            'post_type' => 'ch_app_user', 'meta_key' => '_ch_user_email',
-            'meta_value' => $email, 'posts_per_page' => 1, 'post_status' => 'any'
+            'post_type' => 'ch_app_user', 'meta_key' => '_ch_user_email', 'meta_value' => $email, 'posts_per_page' => 1, 'post_status' => 'any'
         ]);
-
         if ( $existing->have_posts() ) return new WP_Error( 'user_exists', 'Correo ya registrado', ['status' => 409] );
 
         $post_id = wp_insert_post([ 'post_title' => $name, 'post_type' => 'ch_app_user', 'post_status' => 'publish' ]);
@@ -126,7 +124,7 @@ class ChileHalal_API_Routes {
 
         update_post_meta( $post_id, '_ch_user_email', $email );
         update_post_meta( $post_id, '_ch_user_status', 'active' );
-        update_post_meta( $post_id, '_ch_user_points', 0 );
+        update_post_meta( $post_id, '_ch_user_role', 'user' );
         update_post_meta( $post_id, '_ch_user_pass_hash', wp_hash_password( $password ) );
 
         return new WP_REST_Response([ 'success' => true, 'message' => 'Usuario registrado' ], 201);
@@ -141,37 +139,27 @@ class ChileHalal_API_Routes {
         if ( empty($email) || empty($password) ) return new WP_Error( 'missing_fields', 'Datos requeridos', ['status' => 400] );
 
         $query = new WP_Query([
-            'post_type' => 'ch_app_user', 'meta_key' => '_ch_user_email',
-            'meta_value' => $email, 'posts_per_page' => 1
+            'post_type' => 'ch_app_user', 'meta_key' => '_ch_user_email', 'meta_value' => $email, 'posts_per_page' => 1
         ]);
-
         if ( ! $query->have_posts() ) return new WP_Error( 'invalid_auth', 'Credenciales incorrectas', ['status' => 401] );
 
         $user_post = $query->posts[0];
-        if ( get_post_meta( $user_post->ID, '_ch_user_status', true ) === 'banned' ) {
-            return new WP_Error( 'user_banned', 'Cuenta bloqueada', ['status' => 403] );
-        }
+        if ( get_post_meta( $user_post->ID, '_ch_user_status', true ) === 'banned' ) return new WP_Error( 'user_banned', 'Cuenta bloqueada', ['status' => 403] );
 
         $stored_hash = get_post_meta( $user_post->ID, '_ch_user_pass_hash', true );
         
         if ( $stored_hash && wp_check_password( $password, $stored_hash ) ) {
-            
-            // --- GENERACIÓN JWT ---
             $issued_at = time();
             $expiration = $issued_at + ( 60 * 60 * 24 * 7 );
-            $server_url = get_bloginfo( 'url' );
+            $role = get_post_meta( $user_post->ID, '_ch_user_role', true ) ?: 'user';
 
             $payload = [
-                'iss'  => $server_url,
+                'iss'  => get_bloginfo( 'url' ),
                 'iat'  => $issued_at,
                 'exp'  => $expiration,
-                'data' => [
-                    'user_id' => $user_post->ID,
-                    'email'   => $email
-                ]
+                'data' => [ 'user_id' => $user_post->ID, 'email' => $email, 'role' => $role ] // Rol en el token es útil
             ];
 
-            // Encriptamos
             $token = JWT::encode( $payload, $this->get_jwt_secret(), 'HS256' );
 
             return new WP_REST_Response([
@@ -180,11 +168,10 @@ class ChileHalal_API_Routes {
                     'id'     => $user_post->ID,
                     'name'   => $user_post->post_title,
                     'email'  => $email,
-                    'points' => (int) get_post_meta( $user_post->ID, '_ch_user_points', true ),
+                    'role'   => $role,
                     'token'  => $token
                 ]
             ], 200);
-
         } else {
             return new WP_Error( 'invalid_auth', 'Credenciales incorrectas', ['status' => 401] );
         }
@@ -193,15 +180,15 @@ class ChileHalal_API_Routes {
     // --- HANDLER DE USUARIO ---
     public function handle_get_me( $request ) {
         $user_id = $request->get_param( 'user_id' );
-        
-        $points = get_post_meta( $user_id, '_ch_user_points', true );
         $post = get_post( $user_id );
+        $role = get_post_meta( $user_id, '_ch_user_role', true ) ?: 'user';
 
         return new WP_REST_Response([
             'success' => true,
-            'message' => 'Acceso autorizado. Hola ' . $post->post_title,
             'data' => [
-                'points' => (int) $points,
+                'id' => $user_id,
+                'name' => $post->post_title,
+                'role' => $role,
                 'status' => get_post_meta( $user_id, '_ch_user_status', true )
             ]
         ], 200);
