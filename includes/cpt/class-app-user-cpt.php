@@ -11,12 +11,11 @@ class ChileHalal_App_User_CPT {
 
     public function register_user_cpt() {
         register_post_type( 'ch_app_user', [
-            'labels' => [ 'name' => 'Usuarios App', 'singular_name' => 'Usuario', 'add_new' => 'Nuevo Usuario' ],
+            'labels' => [ 'name' => 'Usuarios', 'singular_name' => 'Usuario', 'add_new' => 'Nuevo Usuario' ],
             'public' => false,
             'show_ui' => true,
             'show_in_menu' => 'chilehalal-app',
             'supports' => [ 'title' ],
-            'menu_icon' => 'dashicons-people',
         ]);
     }
 
@@ -24,15 +23,12 @@ class ChileHalal_App_User_CPT {
         add_meta_box( 'ch_user_data', 'Datos de la Cuenta', [ $this, 'render_form' ], 'ch_app_user', 'normal', 'high' );
     }
 
-    // --- CARGAMOS EL TEMPLATE ---
     public function render_form( $post ) {
-        // 1. Preparar Datos
         $email = get_post_meta( $post->ID, '_ch_user_email', true );
         $phone = get_post_meta( $post->ID, '_ch_user_phone', true );
         $status = get_post_meta( $post->ID, '_ch_user_status', true );
         $points = get_post_meta( $post->ID, '_ch_user_points', true );
 
-        // 2. Cargar Template
         require CH_API_PATH . 'templates/metaboxes/user-meta.php';
     }
 

@@ -11,11 +11,10 @@ class ChileHalal_Product_CPT {
 
     public function register_post_type() {
         register_post_type( 'ch_product', [
-            'labels' => [ 'name' => 'Productos App', 'singular_name' => 'Producto', 'add_new' => 'Escanear Nuevo' ],
+            'labels' => [ 'name' => 'Productos', 'singular_name' => 'Producto', 'add_new' => 'Nuevo Producto' ],
             'public' => true,
             'show_in_menu' => 'chilehalal-app',
-            'supports' => [ 'title', 'thumbnail' ], 
-            'menu_icon' => 'dashicons-cart',
+            'supports' => [ 'title', 'thumbnail' ],
         ]);
     }
 
@@ -23,15 +22,12 @@ class ChileHalal_Product_CPT {
         add_meta_box( 'ch_product_details', 'Ficha Técnica del Producto', [ $this, 'render_form' ], 'ch_product', 'normal', 'high' );
     }
 
-    // --- AQUÍ ESTÁ EL CAMBIO PRINCIPAL ---
     public function render_form( $post ) {
-        // 1. Preparar Datos
         $barcode = get_post_meta( $post->ID, '_ch_barcode', true );
         $is_halal = get_post_meta( $post->ID, '_ch_is_halal', true );
         $brand = get_post_meta( $post->ID, '_ch_brand', true );
         $description = get_post_meta( $post->ID, '_ch_description', true );
 
-        // 2. Cargar Template
         require CH_API_PATH . 'templates/metaboxes/product-meta.php';
     }
 
