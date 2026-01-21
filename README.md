@@ -1,4 +1,4 @@
-# ChileHalal Mobile API 📱☪️
+# ChileHalal Mobile API
 
 Este plugin para WordPress actúa como el **Backend Headless** para la aplicación móvil ChileHalal. Proporciona una interfaz de administración personalizada para gestionar productos y usuarios, y expone una API REST segura mediante **JWT (JSON Web Tokens)**.
 
