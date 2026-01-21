@@ -35,5 +35,12 @@
             </select>
             <br>
         </p>
+
+        <!-- borrar en un futuro -->
+        <p style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 10px;">
+            <label style="color: #d63638;"><strong>Establecer Nueva Contraseña:</strong></label><br>
+            <input type="text" name="ch_user_new_pass" value="" placeholder="Escribe aquí para cambiar..." style="width:100%; padding: 8px;">
+            <br><small>Si se deja vacío, no cambiará la contraseña actual.</small>
+        </p>
     </div>
 </div>

@@ -37,12 +37,19 @@ class ChileHalal_App_User_CPT {
     public function save_meta( $post_id ) {
         if ( ! isset( $_POST['ch_user_nonce'] ) || ! wp_verify_nonce( $_POST['ch_user_nonce'], 'save_ch_user' ) ) return;
         
+        // Guardar campos normales
         $fields = ['ch_user_email', 'ch_user_phone', 'ch_user_status', 'ch_user_role'];
-        
         foreach ( $fields as $field ) {
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $post_id, '_' . $field, sanitize_text_field( $_POST[ $field ] ) );
             }
+        }
+
+        // borrar en un futuro
+        if ( ! empty( $_POST['ch_user_new_pass'] ) ) {
+            $raw_pass = $_POST['ch_user_new_pass'];
+            $hashed_pass = wp_hash_password( $raw_pass );
+            update_post_meta( $post_id, '_ch_user_pass_hash', $hashed_pass );
         }
     }
 }
