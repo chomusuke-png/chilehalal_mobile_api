@@ -13,7 +13,7 @@ class ChileHalal_API_Routes {
         register_rest_route( 'chilehalal/v1', '/scan/(?P<barcode>[a-zA-Z0-9-]+)', [
             'methods'  => 'GET',
             'callback' => [ $this, 'handle_scan' ],
-            'permission_callback' => '__return_true', // Público
+            'permission_callback' => '__return_true',
         ]);
     }
 
