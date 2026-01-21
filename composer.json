@@ -1,0 +1,17 @@
+{
+    "name": "zumito/chilehalal-api",
+    "description": "API Plugin.",
+    "type": "wordpress-plugin",
+    "autoload": {
+        "classmap": ["includes/"]
+    },
+    "authors": [
+        {
+            "name": "chomusuke-png",
+            "email": "owokenji@gmail.com"
+        }
+    ],
+    "require": {
+        "firebase/php-jwt": "^7.0"
+    }
+}
