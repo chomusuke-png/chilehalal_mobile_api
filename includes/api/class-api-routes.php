@@ -25,6 +25,13 @@ class ChileHalal_API_Routes {
 
     // --- RUTAS ---
     public function register_routes() {
+        // Catálogo de Productos (GET)
+        register_rest_route( 'chilehalal/v1', '/products', [
+            'methods'  => 'GET',
+            'callback' => [ $this, 'handle_get_products' ],
+            'permission_callback' => '__return_true', // O usa check_jwt_permission si quieres que sea privado
+        ]);
+
         // Escáner (GET)
         register_rest_route( 'chilehalal/v1', '/scan/(?P<barcode>[a-zA-Z0-9-]+)', [
             'methods'  => 'GET',
@@ -74,6 +81,42 @@ class ChileHalal_API_Routes {
         } catch ( Exception $e ) {
             return new WP_Error( 'invalid_token', 'Token inválido o expirado: ' . $e->getMessage(), ['status' => 401] );
         }
+    }
+
+    // --- HANDLER DEL CATÁLOGO ---
+    public function handle_get_products( $request ) {
+        $page = $request->get_param('page') ?: 1;
+
+        $args = [
+            'post_type'      => 'ch_product',
+            'posts_per_page' => 20,
+            'paged'          => $page,
+            'post_status'    => 'publish',
+            'orderby'        => 'title',
+            'order'          => 'ASC'
+        ];
+
+        $query = new WP_Query( $args );
+        $products = [];
+
+        if ( $query->have_posts() ) {
+            foreach ( $query->posts as $post ) {
+                $products[] = [
+                    'id'          => $post->ID,
+                    'name'        => $post->post_title,
+                    'description' => wp_strip_all_tags( get_post_meta($post->ID, '_ch_description', true) ),
+                    'brand'       => get_post_meta($post->ID, '_ch_brand', true),
+                    'is_halal'    => get_post_meta( $post->ID, '_ch_is_halal', true ) === 'yes',
+                    'barcode'     => get_post_meta( $post->ID, '_ch_barcode', true ),
+                    'image_url'   => get_the_post_thumbnail_url( $post->ID, 'medium' ) ?: null
+                ];
+            }
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'data'    => $products
+        ], 200);
     }
 
     // --- HANDLER DEL ESCÁNER ---
