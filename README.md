@@ -10,6 +10,8 @@ Este plugin transforma WordPress en un **Backend Headless** para la aplicación 
 4. Suba el archivo `chilehalal-api.zip` y dele en **Activar**
 5. **Importante:** Ve a *Ajustes > Enlaces permanentes* y haz clic en "Guardar cambios" para refrescar las rutas de la API.
 
+---
+
 ## 📡 Endpoints de la API
 
 La URL base para todas las consultas es: `https://tu-dominio.com/wp-json/chilehalal/v1`.
