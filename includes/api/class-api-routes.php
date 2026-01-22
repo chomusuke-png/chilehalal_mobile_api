@@ -86,15 +86,20 @@ class ChileHalal_API_Routes {
     // --- HANDLER DEL CATÁLOGO ---
     public function handle_get_products( $request ) {
         $page = $request->get_param('page') ?: 1;
+        $search = $request->get_param('search');
 
         $args = [
             'post_type'      => 'ch_product',
-            'posts_per_page' => 20,
+            'posts_per_page' => 16,
             'paged'          => $page,
             'post_status'    => 'publish',
             'orderby'        => 'title',
             'order'          => 'ASC'
         ];
+
+        if ( ! empty( $search ) ) {
+            $args['s'] = sanitize_text_field( $search );
+        }
 
         $query = new WP_Query( $args );
         $products = [];
@@ -115,7 +120,12 @@ class ChileHalal_API_Routes {
 
         return new WP_REST_Response([
             'success' => true,
-            'data'    => $products
+            'data'    => $products,
+            'pagination' => [
+                'current_page' => (int) $page,
+                'total_pages'  => $query->max_num_pages,
+                'total_items'  => $query->found_posts
+            ]
         ], 200);
     }
 
