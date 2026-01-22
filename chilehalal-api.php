@@ -2,7 +2,7 @@
 /**
  * Plugin Name: ChileHalal Mobile API
  * Description: Gestión avanzada de App Móvil.
- * Version: 1.0.6
+ * Version: 1.1.0
  * Author: Zumito
  */
 

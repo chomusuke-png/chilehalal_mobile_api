@@ -28,7 +28,7 @@
 </div>
 
 <div class="ch-row">
-    <label for="ch_brand">Marca / Fabricante</label>
+    <label for="ch_brand">Marca</label>
     <input type="text" id="ch_brand" name="ch_brand" value="<?php echo esc_attr($brand); ?>" placeholder="Ej: Nestlé, Costa, etc.">
 </div>
 

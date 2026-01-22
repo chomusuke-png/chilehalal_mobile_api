@@ -27,9 +27,9 @@ class ChileHalal_App_User_CPT {
         $email = get_post_meta( $post->ID, '_ch_user_email', true );
         $phone = get_post_meta( $post->ID, '_ch_user_phone', true );
         $status = get_post_meta( $post->ID, '_ch_user_status', true );
-        
-        $role = get_post_meta( $post->ID, '_ch_user_role', true );
-        if ( empty( $role ) ) $role = 'user'; 
+        $role = get_post_meta( $post->ID, '_ch_user_role', true ) ?: 'user';
+        $company = get_post_meta( $post->ID, '_ch_user_company', true );
+        $brands = get_post_meta( $post->ID, '_ch_user_brands', true );
 
         require CH_API_PATH . 'templates/metaboxes/user-meta.php';
     }
@@ -38,11 +38,21 @@ class ChileHalal_App_User_CPT {
         if ( ! isset( $_POST['ch_user_nonce'] ) || ! wp_verify_nonce( $_POST['ch_user_nonce'], 'save_ch_user' ) ) return;
         
         // Guardar campos normales
-        $fields = ['ch_user_email', 'ch_user_phone', 'ch_user_status', 'ch_user_role'];
+        $fields = ['ch_user_email', 'ch_user_phone', 'ch_user_status', 'ch_user_role', 'ch_user_company'];
         foreach ( $fields as $field ) {
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $post_id, '_' . $field, sanitize_text_field( $_POST[ $field ] ) );
             }
+        }
+
+        // Lógica especial para Marcas (Array)
+        if ( isset( $_POST['ch_user_brands'] ) ) {
+            // Recibimos un string separado por comas desde el UI, lo convertimos a array limpio
+            $brands_raw = explode( ',', $_POST['ch_user_brands'] );
+            $brands_clean = array_filter( array_map( 'trim', $brands_raw ) );
+            update_post_meta( $post_id, '_ch_user_brands', $brands_clean );
+        } else {
+            delete_post_meta( $post_id, '_ch_user_brands' );
         }
 
         // borrar en un futuro

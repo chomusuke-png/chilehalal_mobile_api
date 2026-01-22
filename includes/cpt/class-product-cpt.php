@@ -5,6 +5,7 @@ class ChileHalal_Product_CPT {
 
     public function __construct() {
         add_action( 'init', [ $this, 'register_post_type' ] );
+        add_action( 'init', [ $this, 'register_taxonomies' ] );
         add_action( 'add_meta_boxes', [ $this, 'add_meta_boxes' ] );
         add_action( 'save_post', [ $this, 'save_meta' ] );
     }
@@ -15,6 +16,22 @@ class ChileHalal_Product_CPT {
             'public' => true,
             'show_in_menu' => 'chilehalal-app',
             'supports' => [ 'title', 'thumbnail' ],
+            'taxonomies' => [ 'ch_product_category' ]
+        ]);
+    }
+
+    public function register_taxonomies() {
+        register_taxonomy( 'ch_product_category', 'ch_product', [
+            'labels' => [
+                'name' => 'Categorías',
+                'singular_name' => 'Categoría',
+                'add_new_item' => 'Añadir Nueva Categoría'
+            ],
+            'hierarchical' => true,
+            'show_ui' => true,
+            'show_admin_column' => true,
+            'query_var' => true,
+            'rewrite' => [ 'slug' => 'categoria-producto' ],
         ]);
     }
 
