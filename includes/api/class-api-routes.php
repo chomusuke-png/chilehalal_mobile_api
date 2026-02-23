@@ -32,7 +32,7 @@ class ChileHalal_API_Routes
             'callback' => [$this, 'handle_scan'],
             'permission_callback' => '__return_true',
         ]);
-        
+
         register_rest_route('chilehalal/v1', '/categories', [
             'methods' => 'GET',
             'callback' => [$this, 'handle_get_categories'],
@@ -72,6 +72,7 @@ class ChileHalal_API_Routes
     {
         $page = $request->get_param('page') ?: 1;
         $search = $request->get_param('search');
+        $category_id = $request->get_param('category_id');
 
         $args = [
             'post_type' => 'ch_product',
@@ -84,6 +85,16 @@ class ChileHalal_API_Routes
 
         if (!empty($search)) {
             $args['s'] = sanitize_text_field($search);
+        }
+
+        if (!empty($category_id)) {
+            $args['tax_query'] = [
+                [
+                    'taxonomy' => 'ch_product_category',
+                    'field'    => 'term_id',
+                    'terms'    => intval($category_id),
+                ]
+            ];
         }
 
         $query = new WP_Query($args);
@@ -127,7 +138,7 @@ class ChileHalal_API_Routes
     {
         $terms = get_terms([
             'taxonomy'   => 'ch_product_category',
-            'hide_empty' => false, 
+            'hide_empty' => false,
         ]);
 
         $categories = [];
@@ -171,7 +182,7 @@ class ChileHalal_API_Routes
             'post_type' => 'ch_product',
             'post_title' => sanitize_text_field($params['name']),
             'post_status' => 'publish',
-            'post_author' => $user_id 
+            'post_author' => $user_id
         ]);
 
         if (is_wp_error($post_id)) return $post_id;
