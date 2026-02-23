@@ -90,12 +90,11 @@ class ChileHalal_API_Routes
 
         if ($query->have_posts()) {
             foreach ($query->posts as $post) {
-                // Obtener categorias
                 $terms = get_the_terms($post->ID, 'ch_product_category');
-                $cats = [];
+                $categories = [];
                 if ($terms && !is_wp_error($terms)) {
                     foreach ($terms as $term) {
-                        $cats[] = $term->name;
+                        $categories[] = $term->name;
                     }
                 }
 
@@ -104,7 +103,7 @@ class ChileHalal_API_Routes
                     'name' => $post->post_title,
                     'description' => wp_strip_all_tags(get_post_meta($post->ID, '_ch_description', true)),
                     'brand' => get_post_meta($post->ID, '_ch_brand', true),
-                    'categories' => $cats,
+                    'categories' => $categories,
                     'is_halal' => get_post_meta($post->ID, '_ch_is_halal', true) === 'yes',
                     'barcode' => get_post_meta($post->ID, '_ch_barcode', true),
                     'image_url' => get_the_post_thumbnail_url($post->ID, 'medium') ?: null
@@ -131,13 +130,10 @@ class ChileHalal_API_Routes
 
         $params = $request->get_json_params();
 
-        // Validar datos mínimos
         if (empty($params['name']) || empty($params['brand'])) {
             return new WP_Error('missing_data', 'Nombre y Marca requeridos', ['status' => 400]);
         }
 
-        // VALIDACIÓN DE SEGURIDAD (ACL)
-        // Pasamos la marca intentada al checker para ver si el partner la posee
         $can_manage = ChileHalal_API_Middleware::check_permission(
             $user_id,
             'manage_products',
@@ -148,25 +144,21 @@ class ChileHalal_API_Routes
             return new WP_Error('forbidden', 'No tienes permisos para gestionar productos de esta marca.', ['status' => 403]);
         }
 
-        // Crear Post
         $post_id = wp_insert_post([
             'post_type' => 'ch_product',
             'post_title' => sanitize_text_field($params['name']),
             'post_status' => 'publish',
-            'post_author' => $user_id // Asignar al creador
+            'post_author' => $user_id
         ]);
 
         if (is_wp_error($post_id))
             return $post_id;
 
-        // Guardar Meta
         update_post_meta($post_id, '_ch_brand', sanitize_text_field($params['brand']));
         update_post_meta($post_id, '_ch_barcode', sanitize_text_field($params['barcode'] ?? ''));
         update_post_meta($post_id, '_ch_is_halal', sanitize_text_field($params['is_halal'] ?? 'doubt'));
 
-        // Guardar Categorías (Taxonomía)
         if (!empty($params['categories']) && is_array($params['categories'])) {
-            // Se asume que envían IDs o Nombres. Si son nombres, WP intentará emparejarlos.
             wp_set_object_terms($post_id, $params['categories'], 'ch_product_category');
         }
 
@@ -180,7 +172,7 @@ class ChileHalal_API_Routes
     // --- HANDLER DEL ESCÁNER ---
     public function handle_scan($request)
     {
-        $barcode = $request['barcode'];
+        $barcode = sanitize_text_field($request['barcode']);
         $args = [
             'post_type' => 'ch_product',
             'posts_per_page' => 1,
@@ -192,13 +184,26 @@ class ChileHalal_API_Routes
 
         if ($query->have_posts()) {
             $post = $query->posts[0];
+            
+            // Recopilamos las categorías
+            $terms = get_the_terms($post->ID, 'ch_product_category');
+            $categories = [];
+            if ($terms && !is_wp_error($terms)) {
+                foreach ($terms as $term) {
+                    $categories[] = $term->name;
+                }
+            }
+
             return new WP_REST_Response([
                 'success' => true,
                 'data' => [
+                    'id' => $post->ID,
                     'name' => $post->post_title,
                     'description' => wp_strip_all_tags(get_post_meta($post->ID, '_ch_description', true)),
                     'brand' => get_post_meta($post->ID, '_ch_brand', true),
+                    'categories' => $categories,
                     'is_halal' => get_post_meta($post->ID, '_ch_is_halal', true) === 'yes',
+                    'barcode' => get_post_meta($post->ID, '_ch_barcode', true),
                     'image_url' => get_the_post_thumbnail_url($post->ID, 'medium') ?: null
                 ]
             ], 200);
@@ -261,11 +266,9 @@ class ChileHalal_API_Routes
             return new WP_Error('invalid_auth', 'Credenciales incorrectas', ['status' => 401]);
 
         $user_post = $query->posts[0];
-        // ... (Verificaciones de ban, pass_hash igual que antes) ...
         $stored_hash = get_post_meta($user_post->ID, '_ch_user_pass_hash', true);
 
         if ($stored_hash && wp_check_password($password, $stored_hash)) {
-            // ...
             $role = get_post_meta($user_post->ID, '_ch_user_role', true) ?: 'user';
             $payload = [
                 'iss' => get_bloginfo('url'),
@@ -274,7 +277,6 @@ class ChileHalal_API_Routes
                 'data' => ['user_id' => $user_post->ID, 'email' => $email, 'role' => $role]
             ];
 
-            // USAMOS EL MIDDLEWARE PARA EL SECRETO
             $token = JWT::encode($payload, ChileHalal_API_Middleware::get_jwt_secret(), 'HS256');
 
             return new WP_REST_Response([
@@ -294,7 +296,7 @@ class ChileHalal_API_Routes
     // --- HANDLER DE USUARIO ---
     public function handle_get_me($request)
     {
-        $auth_user = $request->get_param('auth_user'); // Extraer del middleware
+        $auth_user = $request->get_param('auth_user'); 
         $user_id = $auth_user->user_id;
         
         $post = get_post($user_id);
@@ -307,7 +309,7 @@ class ChileHalal_API_Routes
                 'name' => $post->post_title,
                 'role' => get_post_meta($user_id, '_ch_user_role', true) ?: 'user',
                 'status' => get_post_meta($user_id, '_ch_user_status', true),
-                'brands' => get_post_meta($user_id, '_ch_user_brands', true) // Útil para el Partner
+                'brands' => get_post_meta($user_id, '_ch_user_brands', true) 
             ]
         ], 200);
     }
