@@ -13,7 +13,6 @@ class ChileHalal_API_Routes
         add_action('rest_api_init', [$this, 'register_routes']);
     }
 
-    // --- RUTAS ---
     public function register_routes()
     {
         register_rest_route('chilehalal/v1', '/products', [
@@ -31,6 +30,12 @@ class ChileHalal_API_Routes
         register_rest_route('chilehalal/v1', '/scan/(?P<barcode>[a-zA-Z0-9-]+)', [
             'methods' => 'GET',
             'callback' => [$this, 'handle_scan'],
+            'permission_callback' => '__return_true',
+        ]);
+        
+        register_rest_route('chilehalal/v1', '/categories', [
+            'methods' => 'GET',
+            'callback' => [$this, 'handle_get_categories'],
             'permission_callback' => '__return_true',
         ]);
 
@@ -53,20 +58,16 @@ class ChileHalal_API_Routes
         ]);
     }
 
-    // --- MIDDLEWARE WRAPPER PARA WP REST API ---
     public function check_auth_middleware($request)
     {
         $auth_result = ChileHalal_API_Middleware::validate_request($request);
-
         if (is_wp_error($auth_result)) {
             return $auth_result;
         }
-
         $request->set_param('auth_user', $auth_result);
         return true;
     }
 
-    // --- HANDLER MOSTRAR PRODUCTOS ---
     public function handle_get_products($request)
     {
         $page = $request->get_param('page') ?: 1;
@@ -122,12 +123,34 @@ class ChileHalal_API_Routes
         ], 200);
     }
 
-    // --- HANDLER CREAR PRODUCTO
+    public function handle_get_categories($request)
+    {
+        $terms = get_terms([
+            'taxonomy'   => 'ch_product_category',
+            'hide_empty' => false, 
+        ]);
+
+        $categories = [];
+        if (!is_wp_error($terms) && !empty($terms)) {
+            foreach ($terms as $term) {
+                $categories[] = [
+                    'id' => $term->term_id,
+                    'name' => $term->name,
+                    'count' => $term->count
+                ];
+            }
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'data' => $categories
+        ], 200);
+    }
+
     public function handle_create_product($request)
     {
         $user_data = $request->get_param('auth_user');
         $user_id = $user_data->user_id;
-
         $params = $request->get_json_params();
 
         if (empty($params['name']) || empty($params['brand'])) {
@@ -148,11 +171,10 @@ class ChileHalal_API_Routes
             'post_type' => 'ch_product',
             'post_title' => sanitize_text_field($params['name']),
             'post_status' => 'publish',
-            'post_author' => $user_id
+            'post_author' => $user_id 
         ]);
 
-        if (is_wp_error($post_id))
-            return $post_id;
+        if (is_wp_error($post_id)) return $post_id;
 
         update_post_meta($post_id, '_ch_brand', sanitize_text_field($params['brand']));
         update_post_meta($post_id, '_ch_barcode', sanitize_text_field($params['barcode'] ?? ''));
@@ -169,7 +191,6 @@ class ChileHalal_API_Routes
         ], 201);
     }
 
-    // --- HANDLER DEL ESCÁNER ---
     public function handle_scan($request)
     {
         $barcode = sanitize_text_field($request['barcode']);
@@ -184,8 +205,6 @@ class ChileHalal_API_Routes
 
         if ($query->have_posts()) {
             $post = $query->posts[0];
-            
-            // Recopilamos las categorías
             $terms = get_the_terms($post->ID, 'ch_product_category');
             $categories = [];
             if ($terms && !is_wp_error($terms)) {
@@ -211,7 +230,6 @@ class ChileHalal_API_Routes
         return new WP_REST_Response(['success' => false, 'message' => 'Producto no encontrado'], 404);
     }
 
-    // --- HANDLER DE REGISTRO ---
     public function handle_register($request)
     {
         $params = $request->get_json_params();
@@ -246,7 +264,6 @@ class ChileHalal_API_Routes
         return new WP_REST_Response(['success' => true, 'message' => 'Usuario registrado'], 201);
     }
 
-    // --- HANDLER DE LOGIN ---
     public function handle_login($request)
     {
         $params = $request->get_json_params();
@@ -293,7 +310,6 @@ class ChileHalal_API_Routes
         return new WP_Error('invalid_auth', 'Credenciales incorrectas', ['status' => 401]);
     }
 
-    // --- HANDLER DE USUARIO ---
     public function handle_get_me($request)
     {
         $auth_user = $request->get_param('auth_user'); 
