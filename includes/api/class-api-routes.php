@@ -56,6 +56,25 @@ class ChileHalal_API_Routes
             'callback' => [$this, 'handle_get_me'],
             'permission_callback' => [$this, 'check_auth_middleware'],
         ]);
+
+        // --- NUEVAS RUTAS DE FAVORITOS ---
+        register_rest_route('chilehalal/v1', '/favorites', [
+            'methods' => 'GET',
+            'callback' => [$this, 'handle_get_favorites'],
+            'permission_callback' => [$this, 'check_auth_middleware'],
+        ]);
+
+        register_rest_route('chilehalal/v1', '/favorites/toggle', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handle_toggle_favorite'],
+            'permission_callback' => [$this, 'check_auth_middleware'],
+        ]);
+
+        register_rest_route('chilehalal/v1', '/favorites/check/(?P<product_id>\d+)', [
+            'methods' => 'GET',
+            'callback' => [$this, 'handle_check_favorite'],
+            'permission_callback' => [$this, 'check_auth_middleware'],
+        ]);
     }
 
     public function check_auth_middleware($request)
@@ -145,7 +164,7 @@ class ChileHalal_API_Routes
         if (!is_wp_error($terms) && !empty($terms)) {
             foreach ($terms as $term) {
                 $image_id = get_term_meta($term->term_id, '_ch_category_image', true);
-                $image_url = $image_id ? wp_get_attachment_image_url($image_id, 'full') : null;
+                $image_url = $image_id ? wp_get_attachment_image_url($image_id, 'medium') : null;
 
                 $categories[] = [
                     'id' => $term->term_id,
@@ -342,6 +361,108 @@ class ChileHalal_API_Routes
                 'status' => get_post_meta($user_id, '_ch_user_status', true),
                 'brands' => get_post_meta($user_id, '_ch_user_brands', true) 
             ]
+        ], 200);
+    }
+
+    // --- HANDLERS DE FAVORITOS ---
+
+    public function handle_get_favorites($request)
+    {
+        $auth_user = $request->get_param('auth_user');
+        $user_id = $auth_user->user_id;
+
+        $favorites = get_post_meta($user_id, '_ch_user_favorites', true);
+        if (!is_array($favorites)) $favorites = [];
+
+        if (empty($favorites)) {
+            return new WP_REST_Response(['success' => true, 'data' => []], 200);
+        }
+
+        $args = [
+            'post_type'      => 'ch_product',
+            'post__in'       => $favorites,
+            'posts_per_page' => -1, // Retorna todos los favoritos
+            'post_status'    => 'publish',
+            'orderby'        => 'post__in' // Mantiene el orden de guardado
+        ];
+
+        $query = new WP_Query($args);
+        $products = [];
+
+        if ($query->have_posts()) {
+            foreach ($query->posts as $post) {
+                $terms = get_the_terms($post->ID, 'ch_product_category');
+                $categories = [];
+                if ($terms && !is_wp_error($terms)) {
+                    foreach ($terms as $term) {
+                        $categories[] = $term->name;
+                    }
+                }
+
+                $products[] = [
+                    'id' => $post->ID,
+                    'name' => $post->post_title,
+                    'description' => wp_strip_all_tags(get_post_meta($post->ID, '_ch_description', true)),
+                    'brand' => get_post_meta($post->ID, '_ch_brand', true),
+                    'categories' => $categories,
+                    'is_halal' => get_post_meta($post->ID, '_ch_is_halal', true) === 'yes',
+                    'barcode' => get_post_meta($post->ID, '_ch_barcode', true),
+                    'image_url' => get_the_post_thumbnail_url($post->ID, 'medium') ?: null
+                ];
+            }
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'data' => $products
+        ], 200);
+    }
+
+    public function handle_toggle_favorite($request)
+    {
+        $auth_user = $request->get_param('auth_user');
+        $user_id = $auth_user->user_id;
+        $params = $request->get_json_params();
+
+        if (empty($params['product_id'])) {
+            return new WP_Error('missing_data', 'ID de producto requerido', ['status' => 400]);
+        }
+
+        $product_id = intval($params['product_id']);
+        $favorites = get_post_meta($user_id, '_ch_user_favorites', true);
+        if (!is_array($favorites)) $favorites = [];
+
+        $is_favorite = false;
+        $index = array_search($product_id, $favorites);
+
+        if ($index !== false) {
+            unset($favorites[$index]);
+            $favorites = array_values($favorites); // Reindexar
+        } else {
+            $favorites[] = $product_id;
+            $is_favorite = true;
+        }
+
+        update_post_meta($user_id, '_ch_user_favorites', $favorites);
+
+        return new WP_REST_Response([
+            'success' => true,
+            'is_favorite' => $is_favorite
+        ], 200);
+    }
+
+    public function handle_check_favorite($request)
+    {
+        $auth_user = $request->get_param('auth_user');
+        $user_id = $auth_user->user_id;
+        $product_id = intval($request['product_id']);
+
+        $favorites = get_post_meta($user_id, '_ch_user_favorites', true);
+        if (!is_array($favorites)) $favorites = [];
+
+        return new WP_REST_Response([
+            'success' => true,
+            'is_favorite' => in_array($product_id, $favorites)
         ], 200);
     }
 }
