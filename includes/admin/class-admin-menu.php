@@ -27,6 +27,14 @@ class ChileHalal_Admin_Menu {
             'chilehalal-app',
             [ $this, 'render_dashboard' ]
         );
+        
+        add_submenu_page(
+            'chilehalal-app',
+            'Categorías de Productos',
+            'Categorías',
+            'manage_options',
+            'edit-tags.php?taxonomy=ch_product_category&post_type=ch_product'
+        );
     }
 
     public function fix_submenu_order() {

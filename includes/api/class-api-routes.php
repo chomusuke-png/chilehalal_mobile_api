@@ -144,10 +144,14 @@ class ChileHalal_API_Routes
         $categories = [];
         if (!is_wp_error($terms) && !empty($terms)) {
             foreach ($terms as $term) {
+                $image_id = get_term_meta($term->term_id, '_ch_category_image', true);
+                $image_url = $image_id ? wp_get_attachment_image_url($image_id, 'full') : null;
+
                 $categories[] = [
                     'id' => $term->term_id,
                     'name' => $term->name,
-                    'count' => $term->count
+                    'count' => $term->count,
+                    'image_url' => $image_url
                 ];
             }
         }

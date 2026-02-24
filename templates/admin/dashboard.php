@@ -16,7 +16,7 @@
         </div>
 
         <div style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; border-left: 4px solid #e40318; width: 300px;">
-            <h2 style="margin-top: 0;">Usuarios App</h2>
+            <h2 style="margin-top: 0;">Usuarios Registrados</h2>
             <p style="font-size: 2em; font-weight: bold; margin: 10px 0;">
                 <?php echo esc_html( $user_count ); ?>
             </p>
