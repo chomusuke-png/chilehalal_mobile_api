@@ -57,7 +57,6 @@ class ChileHalal_API_Routes
             'permission_callback' => [$this, 'check_auth_middleware'],
         ]);
 
-        // --- NUEVAS RUTAS DE FAVORITOS ---
         register_rest_route('chilehalal/v1', '/favorites', [
             'methods' => 'GET',
             'callback' => [$this, 'handle_get_favorites'],
@@ -213,9 +212,36 @@ class ChileHalal_API_Routes
         update_post_meta($post_id, '_ch_brand', sanitize_text_field($params['brand']));
         update_post_meta($post_id, '_ch_barcode', sanitize_text_field($params['barcode'] ?? ''));
         update_post_meta($post_id, '_ch_is_halal', sanitize_text_field($params['is_halal'] ?? 'doubt'));
+        update_post_meta($post_id, '_ch_description', sanitize_textarea_field($params['description'] ?? ''));
+
+        if (!empty($params['image_base64'])) {
+            $image_data = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $params['image_base64']));
+            if ($image_data !== false) {
+                $filename = 'product_' . $post_id . '_' . time() . '.jpg';
+                $upload_file = wp_upload_bits($filename, null, $image_data);
+                
+                if (!$upload_file['error']) {
+                    $wp_filetype = wp_check_filetype($filename, null);
+                    $attachment = [
+                        'post_mime_type' => $wp_filetype['type'],
+                        'post_title'     => sanitize_file_name($filename),
+                        'post_content'   => '',
+                        'post_status'    => 'inherit'
+                    ];
+                    $attachment_id = wp_insert_attachment($attachment, $upload_file['file'], $post_id);
+                    if (!is_wp_error($attachment_id)) {
+                        require_once(ABSPATH . 'wp-admin/includes/image.php');
+                        $attachment_data = wp_generate_attachment_metadata($attachment_id, $upload_file['file']);
+                        wp_update_attachment_metadata($attachment_id, $attachment_data);
+                        set_post_thumbnail($post_id, $attachment_id);
+                    }
+                }
+            }
+        }
 
         if (!empty($params['categories']) && is_array($params['categories'])) {
-            wp_set_object_terms($post_id, $params['categories'], 'ch_product_category');
+            $cat_ids = array_map('intval', $params['categories']);
+            wp_set_object_terms($post_id, $cat_ids, 'ch_product_category');
         }
 
         return new WP_REST_Response([
@@ -364,8 +390,6 @@ class ChileHalal_API_Routes
         ], 200);
     }
 
-    // --- HANDLERS DE FAVORITOS ---
-
     public function handle_get_favorites($request)
     {
         $auth_user = $request->get_param('auth_user');
@@ -381,9 +405,9 @@ class ChileHalal_API_Routes
         $args = [
             'post_type'      => 'ch_product',
             'post__in'       => $favorites,
-            'posts_per_page' => -1, // Retorna todos los favoritos
+            'posts_per_page' => -1,
             'post_status'    => 'publish',
-            'orderby'        => 'post__in' // Mantiene el orden de guardado
+            'orderby'        => 'post__in'
         ];
 
         $query = new WP_Query($args);
@@ -437,7 +461,7 @@ class ChileHalal_API_Routes
 
         if ($index !== false) {
             unset($favorites[$index]);
-            $favorites = array_values($favorites); // Reindexar
+            $favorites = array_values($favorites);
         } else {
             $favorites[] = $product_id;
             $is_favorite = true;
