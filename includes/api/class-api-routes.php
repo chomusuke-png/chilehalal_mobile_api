@@ -27,6 +27,19 @@ class ChileHalal_API_Routes
             'permission_callback' => [$this, 'check_auth_middleware'],
         ]);
 
+        register_rest_route('chilehalal/v1', '/products/(?P<id>\d+)', [
+            [
+                'methods' => 'PUT',
+                'callback' => [$this, 'handle_update_product'],
+                'permission_callback' => [$this, 'check_auth_middleware'],
+            ],
+            [
+                'methods' => 'DELETE',
+                'callback' => [$this, 'handle_delete_product'],
+                'permission_callback' => [$this, 'check_auth_middleware'],
+            ]
+        ]);
+
         register_rest_route('chilehalal/v1', '/scan/(?P<barcode>[a-zA-Z0-9-]+)', [
             'methods' => 'GET',
             'callback' => [$this, 'handle_scan'],
@@ -290,6 +303,124 @@ class ChileHalal_API_Routes
         ], 201);
     }
 
+    public function handle_delete_product($request)
+    {
+        $user_data = $request->get_param('auth_user');
+        $user_id = $user_data->user_id;
+        $product_id = intval($request['id']);
+
+        $post = get_post($product_id);
+        if (!$post || $post->post_type !== 'ch_product') {
+            return new WP_Error('not_found', 'Producto no encontrado', ['status' => 404]);
+        }
+
+        $product_brand = get_post_meta($product_id, '_ch_brand', true);
+
+        $can_manage = ChileHalal_API_Middleware::check_permission(
+            $user_id,
+            'manage_products',
+            ['brand' => $product_brand]
+        );
+
+        if (!$can_manage) {
+            return new WP_Error('forbidden', 'No tienes permisos para eliminar este producto.', ['status' => 403]);
+        }
+
+        $result = wp_delete_post($product_id, true);
+
+        if (!$result) {
+            return new WP_Error('delete_failed', 'Error al eliminar el producto', ['status' => 500]);
+        }
+
+        return new WP_REST_Response([
+            'success' => true, 
+            'message' => 'Producto eliminado correctamente'
+        ], 200);
+    }
+
+    public function handle_update_product($request)
+    {
+        $user_data = $request->get_param('auth_user');
+        $user_id = $user_data->user_id;
+        $product_id = intval($request['id']);
+        $params = $request->get_json_params();
+
+        $post = get_post($product_id);
+        if (!$post || $post->post_type !== 'ch_product') {
+            return new WP_Error('not_found', 'Producto no encontrado', ['status' => 404]);
+        }
+
+        $current_brand = get_post_meta($product_id, '_ch_brand', true);
+
+        $can_manage = ChileHalal_API_Middleware::check_permission(
+            $user_id,
+            'manage_products',
+            ['brand' => $current_brand]
+        );
+
+        if (!$can_manage) {
+            return new WP_Error('forbidden', 'No tienes permisos para editar este producto.', ['status' => 403]);
+        }
+
+        if (!empty($params['brand']) && $params['brand'] !== $current_brand) {
+            $can_manage_new_brand = ChileHalal_API_Middleware::check_permission(
+                $user_id,
+                'manage_products',
+                ['brand' => $params['brand']]
+            );
+            if (!$can_manage_new_brand) {
+                return new WP_Error('forbidden', 'No tienes permisos para asignar esta nueva marca.', ['status' => 403]);
+            }
+            update_post_meta($product_id, '_ch_brand', sanitize_text_field($params['brand']));
+        }
+
+        if (!empty($params['name'])) {
+            wp_update_post([
+                'ID' => $product_id,
+                'post_title' => sanitize_text_field($params['name'])
+            ]);
+        }
+
+        if (isset($params['barcode'])) update_post_meta($product_id, '_ch_barcode', sanitize_text_field($params['barcode']));
+        if (isset($params['is_halal'])) update_post_meta($product_id, '_ch_is_halal', sanitize_text_field($params['is_halal']));
+        if (isset($params['description'])) update_post_meta($product_id, '_ch_description', sanitize_textarea_field($params['description']));
+
+        if (isset($params['categories']) && is_array($params['categories'])) {
+            $cat_ids = array_map('intval', $params['categories']);
+            wp_set_object_terms($product_id, $cat_ids, 'ch_product_category');
+        }
+
+        if (!empty($params['image_base64'])) {
+            $image_data = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $params['image_base64']));
+            if ($image_data !== false) {
+                $filename = 'product_' . $product_id . '_' . time() . '.jpg';
+                $upload_file = wp_upload_bits($filename, null, $image_data);
+                
+                if (!$upload_file['error']) {
+                    $wp_filetype = wp_check_filetype($filename, null);
+                    $attachment = [
+                        'post_mime_type' => $wp_filetype['type'],
+                        'post_title'     => sanitize_file_name($filename),
+                        'post_content'   => '',
+                        'post_status'    => 'inherit'
+                    ];
+                    $attachment_id = wp_insert_attachment($attachment, $upload_file['file'], $product_id);
+                    if (!is_wp_error($attachment_id)) {
+                        require_once(ABSPATH . 'wp-admin/includes/image.php');
+                        $attachment_data = wp_generate_attachment_metadata($attachment_id, $upload_file['file']);
+                        wp_update_attachment_metadata($attachment_id, $attachment_data);
+                        set_post_thumbnail($product_id, $attachment_id);
+                    }
+                }
+            }
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'Producto actualizado correctamente'
+        ], 200);
+    }
+
     public function handle_scan($request)
     {
         $barcode = sanitize_text_field($request['barcode']);
@@ -451,6 +582,10 @@ class ChileHalal_API_Routes
 
         if (isset($params['phone'])) {
             update_post_meta($user_id, '_ch_user_phone', sanitize_text_field($params['phone']));
+        }
+        
+        if (isset($params['company'])) {
+            update_post_meta($user_id, '_ch_user_company', sanitize_text_field($params['company']));
         }
 
         if (!empty($params['image_base64'])) {
