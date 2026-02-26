@@ -385,6 +385,7 @@ class ChileHalal_API_Routes
         if (!$post) return new WP_Error('not_found', 'Usuario no encontrado', ['status' => 404]);
 
         $profile_image_url = get_the_post_thumbnail_url($user_id, 'thumbnail') ?: null;
+        $brands = get_post_meta($user_id, '_ch_user_brands', true);
 
         return new WP_REST_Response([
             'success' => true,
@@ -394,7 +395,9 @@ class ChileHalal_API_Routes
                 'email' => get_post_meta($user_id, '_ch_user_email', true),
                 'role' => get_post_meta($user_id, '_ch_user_role', true) ?: 'user',
                 'status' => get_post_meta($user_id, '_ch_user_status', true),
-                'brands' => get_post_meta($user_id, '_ch_user_brands', true),
+                'brands' => is_array($brands) ? $brands : [],
+                'phone' => get_post_meta($user_id, '_ch_user_phone', true),
+                'company' => get_post_meta($user_id, '_ch_user_company', true),
                 'profile_image' => $profile_image_url
             ]
         ], 200);
@@ -411,6 +414,10 @@ class ChileHalal_API_Routes
                 'ID' => $user_id,
                 'post_title' => sanitize_text_field($params['name'])
             ]);
+        }
+
+        if (isset($params['phone'])) {
+            update_post_meta($user_id, '_ch_user_phone', sanitize_text_field($params['phone']));
         }
 
         if (!empty($params['image_base64'])) {
