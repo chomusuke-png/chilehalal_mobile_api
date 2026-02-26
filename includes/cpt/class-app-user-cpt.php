@@ -11,11 +11,18 @@ class ChileHalal_App_User_CPT {
 
     public function register_user_cpt() {
         register_post_type( 'ch_app_user', [
-            'labels' => [ 'name' => 'Usuarios', 'singular_name' => 'Usuario', 'add_new' => 'Nuevo Usuario' ],
+            'labels' => [
+                'name' => 'Usuarios',
+                'singular_name' => 'Usuario',
+                'add_new' => 'Añadir Usuario',
+                'add_new_item' => 'Añadir Nuevo Usuario'
+            ],
             'public' => false,
             'show_ui' => true,
             'show_in_menu' => 'chilehalal-app',
-            'supports' => [ 'title' ],
+            'supports' => [ 'title', 'thumbnail' ], 
+            'capability_type' => 'post',
+            'has_archive' => false,
         ]);
     }
 

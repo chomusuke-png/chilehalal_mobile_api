@@ -57,6 +57,12 @@ class ChileHalal_API_Routes
             'permission_callback' => [$this, 'check_auth_middleware'],
         ]);
 
+        register_rest_route('chilehalal/v1', '/user/update', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handle_update_user'],
+            'permission_callback' => [$this, 'check_auth_middleware'],
+        ]);
+
         register_rest_route('chilehalal/v1', '/favorites', [
             'methods' => 'GET',
             'callback' => [$this, 'handle_get_favorites'],
@@ -378,15 +384,63 @@ class ChileHalal_API_Routes
         $post = get_post($user_id);
         if (!$post) return new WP_Error('not_found', 'Usuario no encontrado', ['status' => 404]);
 
+        $profile_image_url = get_the_post_thumbnail_url($user_id, 'thumbnail') ?: null;
+
         return new WP_REST_Response([
             'success' => true,
             'data' => [
                 'id' => $user_id,
                 'name' => $post->post_title,
+                'email' => get_post_meta($user_id, '_ch_user_email', true),
                 'role' => get_post_meta($user_id, '_ch_user_role', true) ?: 'user',
                 'status' => get_post_meta($user_id, '_ch_user_status', true),
-                'brands' => get_post_meta($user_id, '_ch_user_brands', true) 
+                'brands' => get_post_meta($user_id, '_ch_user_brands', true),
+                'profile_image' => $profile_image_url
             ]
+        ], 200);
+    }
+
+    public function handle_update_user($request)
+    {
+        $auth_user = $request->get_param('auth_user');
+        $user_id = $auth_user->user_id;
+        $params = $request->get_json_params();
+
+        if (!empty($params['name'])) {
+            wp_update_post([
+                'ID' => $user_id,
+                'post_title' => sanitize_text_field($params['name'])
+            ]);
+        }
+
+        if (!empty($params['image_base64'])) {
+            $image_data = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $params['image_base64']));
+            if ($image_data !== false) {
+                $filename = 'user_' . $user_id . '_' . time() . '.jpg';
+                $upload_file = wp_upload_bits($filename, null, $image_data);
+                
+                if (!$upload_file['error']) {
+                    $wp_filetype = wp_check_filetype($filename, null);
+                    $attachment = [
+                        'post_mime_type' => $wp_filetype['type'],
+                        'post_title'     => sanitize_file_name($filename),
+                        'post_content'   => '',
+                        'post_status'    => 'inherit'
+                    ];
+                    $attachment_id = wp_insert_attachment($attachment, $upload_file['file'], $user_id);
+                    if (!is_wp_error($attachment_id)) {
+                        require_once(ABSPATH . 'wp-admin/includes/image.php');
+                        $attachment_data = wp_generate_attachment_metadata($attachment_id, $upload_file['file']);
+                        wp_update_attachment_metadata($attachment_id, $attachment_data);
+                        set_post_thumbnail($user_id, $attachment_id);
+                    }
+                }
+            }
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => 'Perfil actualizado correctamente'
         ], 200);
     }
 
