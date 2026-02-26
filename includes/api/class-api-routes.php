@@ -39,6 +39,12 @@ class ChileHalal_API_Routes
             'permission_callback' => '__return_true',
         ]);
 
+        register_rest_route('chilehalal/v1', '/brands', [
+            'methods' => 'GET',
+            'callback' => [$this, 'handle_get_brands'],
+            'permission_callback' => '__return_true',
+        ]);
+
         register_rest_route('chilehalal/v1', '/auth/register', [
             'methods' => 'POST',
             'callback' => [$this, 'handle_register'],
@@ -97,6 +103,7 @@ class ChileHalal_API_Routes
         $page = $request->get_param('page') ?: 1;
         $search = $request->get_param('search');
         $category_id = $request->get_param('category_id');
+        $brands_param = $request->get_param('brands');
 
         $args = [
             'post_type' => 'ch_product',
@@ -104,7 +111,8 @@ class ChileHalal_API_Routes
             'paged' => $page,
             'post_status' => 'publish',
             'orderby' => 'title',
-            'order' => 'ASC'
+            'order' => 'ASC',
+            'meta_query' => []
         ];
 
         if (!empty($search)) {
@@ -118,6 +126,15 @@ class ChileHalal_API_Routes
                     'field'    => 'term_id',
                     'terms'    => intval($category_id),
                 ]
+            ];
+        }
+
+        if (!empty($brands_param)) {
+            $brands_array = array_map('sanitize_text_field', explode(',', $brands_param));
+            $args['meta_query'][] = [
+                'key'     => '_ch_brand',
+                'value'   => $brands_array,
+                'compare' => 'IN'
             ];
         }
 
@@ -183,6 +200,22 @@ class ChileHalal_API_Routes
         return new WP_REST_Response([
             'success' => true,
             'data' => $categories
+        ], 200);
+    }
+
+    public function handle_get_brands($request)
+    {
+        global $wpdb;
+        $brands = $wpdb->get_col("
+            SELECT DISTINCT meta_value 
+            FROM $wpdb->postmeta 
+            WHERE meta_key = '_ch_brand' AND meta_value != ''
+            ORDER BY meta_value ASC
+        ");
+
+        return new WP_REST_Response([
+            'success' => true,
+            'data' => $brands
         ], 200);
     }
 
