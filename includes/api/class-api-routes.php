@@ -310,8 +310,8 @@ class ChileHalal_API_Routes
         $product_id = intval($request['id']);
 
         $post = get_post($product_id);
-        if (!$post || $post->post_type !== 'ch_product') {
-            return new WP_Error('not_found', 'Producto no encontrado', ['status' => 404]);
+        if (!$post || $post->post_type !== 'ch_product' || $post->post_status === 'trash') {
+            return new WP_Error('not_found', 'Producto no encontrado o ya eliminado', ['status' => 404]);
         }
 
         $product_brand = get_post_meta($product_id, '_ch_brand', true);
@@ -326,15 +326,15 @@ class ChileHalal_API_Routes
             return new WP_Error('forbidden', 'No tienes permisos para eliminar este producto.', ['status' => 403]);
         }
 
-        $result = wp_delete_post($product_id, true);
+        $result = wp_trash_post($product_id);
 
         if (!$result) {
-            return new WP_Error('delete_failed', 'Error al eliminar el producto', ['status' => 500]);
+            return new WP_Error('delete_failed', 'Error al enviar el producto a la papelera', ['status' => 500]);
         }
 
         return new WP_REST_Response([
             'success' => true, 
-            'message' => 'Producto eliminado correctamente'
+            'message' => 'Producto movido a la papelera correctamente'
         ], 200);
     }
 
