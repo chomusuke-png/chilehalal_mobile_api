@@ -45,6 +45,7 @@ class ChileHalal_Audit_Log_Model {
             'normal', 
             'high'
         );
+        remove_meta_box('submitdiv', 'ch_audit_log', 'side');
     }
 
     public function renderForm($post) {
@@ -55,12 +56,20 @@ class ChileHalal_Audit_Log_Model {
         $detailsJson = get_post_meta($post->ID, '_ch_audit_details', true);
         
         $details = json_decode($detailsJson, true);
-        $author = get_user_by('id', $post->post_author);
-        $authorName = $author ? $author->display_name . ' (' . $author->user_email . ')' : 'Sistema / Desconocido';
+        
+        $author_id = $post->post_author;
+        $author_post = get_post($author_id);
+        
+        if ($author_post && $author_post->post_type === 'ch_app_user') {
+            $author_email = get_post_meta($author_id, '_ch_user_email', true);
+            $authorName = $author_post->post_title . ' (' . $author_email . ')';
+        } else {
+            $authorName = 'Sistema / Desconocido (ID almacenado: ' . $author_id . ')';
+        }
 
         ?>
         <div style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 5px; font-family: monospace;">
-            <p><strong style="color: #569cd6;">Usuario:</strong> <?php echo esc_html($authorName); ?></p>
+            <p><strong style="color: #569cd6;">Usuario App:</strong> <?php echo esc_html($authorName); ?></p>
             <p><strong style="color: #569cd6;">Acción:</strong> <?php echo esc_html(strtoupper($action)); ?></p>
             <p><strong style="color: #569cd6;">Recurso:</strong> <?php echo esc_html($resourceType); ?> (ID: <?php echo esc_html($resourceId); ?>)</p>
             <p><strong style="color: #569cd6;">IP Origen:</strong> <?php echo esc_html($ip); ?></p>
