@@ -101,6 +101,9 @@ class ChileHalal_Product_Controller {
 
         delete_transient('ch_all_brands');
 
+        unset($params['image_base64']);
+        ChileHalal_Audit_Logger::log($user_id, 'create', 'product', $post_id, $params);
+
         return new WP_REST_Response([
             'success' => true,
             'id' => $post_id,
@@ -156,6 +159,9 @@ class ChileHalal_Product_Controller {
 
         delete_transient('ch_all_brands');
 
+        unset($params['image_base64']);
+        ChileHalal_Audit_Logger::log($user_id, 'update', 'product', $product_id, $params);
+
         return new WP_REST_Response([
             'success' => true,
             'message' => 'Producto actualizado correctamente'
@@ -182,6 +188,8 @@ class ChileHalal_Product_Controller {
         }
 
         delete_transient('ch_all_brands');
+
+        ChileHalal_Audit_Logger::log($user_id, 'delete', 'product', $product_id, ['deleted_brand' => $product_brand]);
 
         return new WP_REST_Response([
             'success' => true, 
