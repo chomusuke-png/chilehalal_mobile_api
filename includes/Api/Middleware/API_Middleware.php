@@ -11,7 +11,6 @@ class ChileHalal_API_Middleware {
         if ( defined( 'CH_JWT_SECRET' ) ) {
             return CH_JWT_SECRET;
         }
-        // Fallback a base de datos
         $db_secret = get_option( 'ch_jwt_secret_db' );
         return ! empty( $db_secret ) ? $db_secret : '';
     }
@@ -20,7 +19,7 @@ class ChileHalal_API_Middleware {
         $auth_header = $request->get_header( 'authorization' );
         
         if ( ! $auth_header ) {
-            return new WP_Error( 'no_token', 'Token de autorización no encontrado', ['status' => 401] );
+            return new WP_Error( 'no_token', 'Token de autorización no encontrado.', ['status' => 401] );
         }
 
         $token = str_replace( 'Bearer ', '', $auth_header );
@@ -36,36 +35,34 @@ class ChileHalal_API_Middleware {
             return $decoded->data;
 
         } catch ( Exception $e ) {
-            return new WP_Error( 'invalid_token', 'Token inválido: ' . $e->getMessage(), ['status' => 401] );
+            error_log( 'ChileHalal API Error JWT: ' . $e->getMessage() );
+            
+            return new WP_Error( 'invalid_token', 'Token de sesión inválido o expirado.', ['status' => 401] );
         }
     }
 
     public static function check_permission( $user_id, $required_cap, $context_data = [] ) {
         $role = get_post_meta( $user_id, '_ch_user_role', true );
         
-        // 1. Owner: Acceso total
         if ( $role === 'owner' ) return true;
 
-        // 2. Lógica según capacidad requerida
         switch ( $required_cap ) {
-            case 'manage_products': // Crear o Editar cualquier cosa
+            case 'manage_products':
                 if ( $role === 'editor' ) return true;
                 
                 if ( $role === 'partner' ) {
-                    // Validar propiedad de marca
-                    $user_brands = get_post_meta( $user_id, '_ch_user_brands', true ); // Array almacenado
+                    $user_brands = get_post_meta( $user_id, '_ch_user_brands', true );
                     $target_brand = $context_data['brand'] ?? '';
                     
                     if ( empty( $user_brands ) || empty( $target_brand ) ) return false;
                     
-                    // Normalización para comparación (lowercase, trim)
                     $user_brands_norm = array_map( 'strtolower', array_map( 'trim', (array) $user_brands ) );
                     return in_array( strtolower( trim( $target_brand ) ), $user_brands_norm );
                 }
                 return false;
 
             case 'read':
-                return true; // Todos (incluso user) pueden leer
+                return true;
 
             default:
                 return false;
