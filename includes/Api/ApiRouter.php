@@ -12,6 +12,7 @@ class ChileHalal_Api_Router {
         $brand_controller = new ChileHalal_Brand_Controller();
         $auth_controller = new ChileHalal_Auth_Controller();
         $user_controller = new ChileHalal_User_Controller();
+        $notification_controller = new ChileHalal_Notification_Controller();
         
         $middleware = new ChileHalal_Jwt_Auth_Middleware();
         $auth_callback = [$middleware, 'checkAuth'];
@@ -99,6 +100,12 @@ class ChileHalal_Api_Router {
         register_rest_route('chilehalal/v1', '/favorites/check/(?P<product_id>\d+)', [
             'methods' => 'GET',
             'callback' => [$user_controller, 'checkFavorite'],
+            'permission_callback' => $auth_callback,
+        ]);
+
+        register_rest_route('chilehalal/v1', '/admin/notifications/broadcast', [
+            'methods' => 'POST',
+            'callback' => [$notification_controller, 'broadcast'],
             'permission_callback' => $auth_callback,
         ]);
     }
