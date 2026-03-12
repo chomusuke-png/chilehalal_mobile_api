@@ -13,6 +13,8 @@ class ChileHalal_Plugin_Bootstrap {
         new ChileHalal_Product_Model();
         new ChileHalal_App_User_Model();
         new ChileHalal_Audit_Log_Model();
+        new ChileHalal_Business_Model();
+        new ChileHalal_Coupon_Model();
     }
 
     private function registerApi() {

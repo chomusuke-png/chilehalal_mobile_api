@@ -13,6 +13,8 @@ class ChileHalal_Api_Router {
         $auth_controller = new ChileHalal_Auth_Controller();
         $user_controller = new ChileHalal_User_Controller();
         $notification_controller = new ChileHalal_Notification_Controller();
+        $business_controller = new ChileHalal_Business_Controller();
+        $coupon_controller = new ChileHalal_Coupon_Controller();
         
         $middleware = new ChileHalal_Jwt_Auth_Middleware();
         $auth_callback = [$middleware, 'checkAuth'];
@@ -107,6 +109,24 @@ class ChileHalal_Api_Router {
             'methods' => 'POST',
             'callback' => [$notification_controller, 'broadcast'],
             'permission_callback' => $auth_callback,
+        ]);
+
+        register_rest_route('chilehalal/v1', '/businesses', [
+            'methods' => 'GET',
+            'callback' => [$business_controller, 'getBusinesses'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        register_rest_route('chilehalal/v1', '/businesses/(?P<id>\d+)', [
+            'methods' => 'GET',
+            'callback' => [$business_controller, 'getBusinessSingle'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        register_rest_route('chilehalal/v1', '/coupons', [
+            'methods' => 'GET',
+            'callback' => [$coupon_controller, 'getCoupons'],
+            'permission_callback' => '__return_true',
         ]);
     }
 }
