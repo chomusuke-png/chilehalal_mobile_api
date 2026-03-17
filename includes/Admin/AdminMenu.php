@@ -6,6 +6,8 @@ class ChileHalal_Admin_Menu {
     public function __construct() {
         add_action('admin_menu', [$this, 'registerMainMenu']);
         add_action('admin_menu', [$this, 'fixSubmenuOrder'], 999);
+        add_filter('parent_file', [$this, 'fixParentFile']);
+        add_filter('submenu_file', [$this, 'fixSubmenuFile']);
     }
 
     public function registerMainMenu() {
@@ -18,7 +20,7 @@ class ChileHalal_Admin_Menu {
             'dashicons-smartphone',
             6
         );
-        
+
         add_submenu_page(
             'chilehalal-app',
             'Panel de Control',
@@ -27,13 +29,53 @@ class ChileHalal_Admin_Menu {
             'chilehalal-app',
             [$this, 'renderDashboard']
         );
-        
+
+        add_submenu_page(
+            'chilehalal-app',
+            'Productos',
+            'Productos',
+            'manage_options',
+            'edit.php?post_type=ch_product'
+        );
+
         add_submenu_page(
             'chilehalal-app',
             'Categorías de Productos',
             'Categorías',
             'manage_options',
             'edit-tags.php?taxonomy=ch_product_category&post_type=ch_product'
+        );
+
+        add_submenu_page(
+            'chilehalal-app',
+            'Negocios',
+            'Negocios',
+            'manage_options',
+            'edit.php?post_type=ch_business'
+        );
+
+        add_submenu_page(
+            'chilehalal-app',
+            'Cupones',
+            'Cupones',
+            'manage_options',
+            'edit.php?post_type=ch_coupon'
+        );
+
+        add_submenu_page(
+            'chilehalal-app',
+            'Usuarios',
+            'Usuarios',
+            'manage_options',
+            'edit.php?post_type=ch_app_user'
+        );
+
+        add_submenu_page(
+            'chilehalal-app',
+            'Historial de Cambios',
+            'Historial',
+            'manage_options',
+            'edit.php?post_type=ch_audit_log'
         );
     }
 
@@ -44,23 +86,68 @@ class ChileHalal_Admin_Menu {
             return;
         }
 
-        $my_submenu = $submenu['chilehalal-app'];
-        $dashboard_key = null;
+        $desired_order = [
+            'chilehalal-app',
+            'edit.php?post_type=ch_product',
+            'edit-tags.php?taxonomy=ch_product_category&post_type=ch_product',
+            'edit.php?post_type=ch_business',
+            'edit.php?post_type=ch_coupon',
+            'edit.php?post_type=ch_app_user',
+            'edit.php?post_type=ch_audit_log',
+        ];
 
-        foreach ($my_submenu as $key => $item) {
-            if ($item[2] === 'chilehalal-app') {
-                $dashboard_key = $key;
-                break;
+        $indexed = [];
+        foreach ($submenu['chilehalal-app'] as $item) {
+            $indexed[$item[2]] = $item;
+        }
+
+        $sorted = [];
+        foreach ($desired_order as $slug) {
+            if (isset($indexed[$slug])) {
+                $sorted[] = $indexed[$slug];
+                unset($indexed[$slug]);
             }
         }
 
-        if ($dashboard_key !== null) {
-            $dashboard_item = $my_submenu[$dashboard_key];
-            unset($my_submenu[$dashboard_key]);
-            array_unshift($my_submenu, $dashboard_item);
+        foreach ($indexed as $item) {
+            $sorted[] = $item;
         }
 
-        $submenu['chilehalal-app'] = $my_submenu;
+        $submenu['chilehalal-app'] = $sorted;
+    }
+
+    public function fixParentFile($parent_file) {
+        global $typenow;
+
+        $our_post_types = ['ch_product', 'ch_business', 'ch_coupon', 'ch_app_user', 'ch_audit_log'];
+
+        if (in_array($typenow, $our_post_types)) {
+            $parent_file = 'chilehalal-app';
+        }
+
+        return $parent_file;
+    }
+
+    public function fixSubmenuFile($submenu_file) {
+        global $typenow, $pagenow;
+
+        $map = [
+            'ch_product'   => 'edit.php?post_type=ch_product',
+            'ch_business'  => 'edit.php?post_type=ch_business',
+            'ch_coupon'    => 'edit.php?post_type=ch_coupon',
+            'ch_app_user'  => 'edit.php?post_type=ch_app_user',
+            'ch_audit_log' => 'edit.php?post_type=ch_audit_log',
+        ];
+
+        if (in_array($pagenow, ['post-new.php', 'post.php']) && isset($map[$typenow])) {
+            $submenu_file = $map[$typenow];
+        }
+
+        if ($pagenow === 'term.php' && isset($_GET['taxonomy']) && $_GET['taxonomy'] === 'ch_product_category') {
+            $submenu_file = 'edit-tags.php?taxonomy=ch_product_category&post_type=ch_product';
+        }
+
+        return $submenu_file;
     }
 
     public function renderDashboard() {
@@ -69,13 +156,13 @@ class ChileHalal_Admin_Menu {
 
         $users = wp_count_posts('ch_app_user');
         $user_count = 0;
-        
+
         if (isset($users->publish)) $user_count += $users->publish;
         if (isset($users->draft))   $user_count += $users->draft;
         if (isset($users->private)) $user_count += $users->private;
-        
+
         $template_path = CH_API_PATH . 'templates/admin/dashboard.php';
-        
+
         if (file_exists($template_path)) {
             require_once $template_path;
         } else {
