@@ -50,6 +50,15 @@ $menu_json_val = empty($menu_json) ? '[]' : $menu_json;
 </div>
 
 <div class="ch-row">
+    <label>Coordenadas GPS</label>
+    <div style="display:flex; gap:10px; max-width:500px;">
+        <input type="text" name="ch_business_latitude" value="<?php echo esc_attr($latitude); ?>" placeholder="Latitud (Ej: -33.4489)">
+        <input type="text" name="ch_business_longitude" value="<?php echo esc_attr($longitude); ?>" placeholder="Longitud (Ej: -70.6693)">
+    </div>
+    <span style="font-size:12px;color:#646970;">Puedes obtenerlas desde Google Maps haciendo clic derecho en el local.</span>
+</div>
+
+<div class="ch-row">
     <label for="ch_business_phone">Teléfono / WhatsApp</label>
     <input type="text" id="ch_business_phone" name="ch_business_phone" value="<?php echo esc_attr($phone); ?>" placeholder="Ej: +56912345678">
 </div>

@@ -49,6 +49,8 @@ class ChileHalal_Business_Model {
         $type = get_post_meta($post->ID, '_ch_business_type', true);
         $address = get_post_meta($post->ID, '_ch_business_address', true);
         $phone = get_post_meta($post->ID, '_ch_business_phone', true);
+        $latitude = get_post_meta($post->ID, '_ch_business_latitude', true);
+        $longitude = get_post_meta($post->ID, '_ch_business_longitude', true);
         
         $gallery_ids = get_post_meta($post->ID, '_ch_business_gallery', true) ?: [];
         $menu_json = get_post_meta($post->ID, '_ch_business_menu', true);
@@ -62,7 +64,7 @@ class ChileHalal_Business_Model {
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
 
         // Guardar campos básicos (halal_status removido)
-        $fields = ['ch_business_type', 'ch_business_address', 'ch_business_phone'];
+        $fields = ['ch_business_type', 'ch_business_address', 'ch_business_phone', 'ch_business_latitude', 'ch_business_longitude'];
         foreach ($fields as $field) {
             if (isset($_POST[$field])) {
                 update_post_meta($post_id, '_' . $field, sanitize_text_field($_POST[$field]));

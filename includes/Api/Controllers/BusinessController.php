@@ -88,13 +88,15 @@ class ChileHalal_Business_Controller {
         elseif ($has_halal && $has_non_halal) $computed_status = 'partial';
 
         $response = [
-            'id' => $post->ID,
-            'name' => $post->post_title,
-            'type' => get_post_meta($post->ID, '_ch_business_type', true),
-            'address' => get_post_meta($post->ID, '_ch_business_address', true),
-            'phone' => get_post_meta($post->ID, '_ch_business_phone', true),
+            'id'                    => $post->ID,
+            'name'                  => $post->post_title,
+            'type'                  => get_post_meta($post->ID, '_ch_business_type', true),
+            'address'               => get_post_meta($post->ID, '_ch_business_address', true),
+            'phone'                 => get_post_meta($post->ID, '_ch_business_phone', true),
+            'latitude'              => (float) get_post_meta($post->ID, '_ch_business_latitude', true) ?: null,
+            'longitude'             => (float) get_post_meta($post->ID, '_ch_business_longitude', true) ?: null,
             'computed_halal_status' => $computed_status,
-            'thumbnail_url' => get_the_post_thumbnail_url($post->ID, 'medium') ?: null,
+            'thumbnail_url'         => get_the_post_thumbnail_url($post->ID, 'medium') ?: null,
         ];
 
         if ($include_details) {
